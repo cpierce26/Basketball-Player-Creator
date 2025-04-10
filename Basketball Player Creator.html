@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.85">
+  <title>Basketball Player Creator</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    header {
+      background: #ff3b30;
+      color: white;
+      padding: 20px 0;
+      text-align: center;
+      font-size: 2rem;
+      border-bottom: 5px solid white;
+    }
+    .player-info, .point-counter {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      font-size: 1.1rem;
+      margin: 20px auto;
+      max-width: 1000px;
+    }
+    .point-counter { color: #ffcc00; }
+    .container { max-width: 1000px; margin: 0 auto 40px; }
+    .category {
+      background: #1e1e1e;
+      padding: 20px 30px;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px #0008;
+    }
+    .category h2 {
+      margin: 0 0 10px;
+      font-size: 1.5rem;
+      color: #ffcc00;
+    }
+    .attribute {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 15px 0;
+    }
+    .attribute label { flex: 1; }
+    .slider-wrapper {
+      flex: 3;
+      position: relative;
+      margin: 0 10px;
+    }
+    .slider-background {
+      width: 100%;
+      height: 10px;
+      border-radius: 5px;
+      background-color: #333;
+      overflow: hidden;
+    }
+    .slider-fill {
+      height: 100%;
+      transition: width 0.2s;
+    }
+    .attribute input[type="range"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 10px;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .value-container {
+      display: flex;
+      justify-content: space-between;
+      width: 70px;
+      font-size: 0.9rem;
+      position: relative;
+    }
+    .highlight {
+      box-shadow: 0 0 10px 2px cyan;
+      border-radius: 10px;
+    }
+    .plus-popup {
+      position: absolute;
+      right: -20px;
+      top: -5px;
+      color: lime;
+      font-size: 1.2rem;
+      font-weight: bold;
+      opacity: 1;
+      animation: fadeOut 1.2s forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-10px); }
+    }
+    .Finishing .slider-fill { background-color: #00bfff; }
+    .Finishing .slider-background { background-color: #02587c; }
+    .Shooting .slider-fill { background-color: #32cd32; }
+    .Shooting .slider-background { background-color: #194d19; }
+    .Playmaking .slider-fill { background-color: #ffd700; }
+    .Playmaking .slider-background { background-color: #5c4f00; }
+    .Defense .slider-fill { background-color: #ff4040; }
+    .Defense .slider-background { background-color: #641010; }
+    .Rebounding .slider-fill { background-color: #b266ff; }
+    .Rebounding .slider-background { background-color: #4a2e6c; }
+    .Physicals .slider-fill { background-color: #d2b48c; }
+    .Physicals .slider-background { background-color: #6c5c41; }
+  </style>
+</head>
+<body>
+  <header>Basketball Player Creator</header>
+  <div class="player-info">
+    <div><strong>Height:</strong> 6'9"</div>
+    <div><strong>Weight:</strong> 235 lbs</div>
+    <div><strong>Wingspan:</strong> 7'5"</div>
+  </div>
+  <div class="point-counter" id="pointCounter">Points Used: 0 / 474</div>
+  <div style="text-align: center; margin-bottom: 20px;">
+    <button onclick="resetAttributes()" style="
+      background: #ff3b30;
+      color: white;
+      font-family: 'Orbitron', sans-serif;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #0006;
+    ">
+      Reset Attributes
+    </button>
+  </div>  
+  <div class="container" id="attribute-container"></div>
+
+  <script src="dependencies.js"></script>
+  <script>
+    const TOTAL_POINTS_CAP = 474;
+
+    const data = {
+      "Finishing": {
+        "Close Shot": 99, "Driving Layup": 98, "Driving Dunk": 99,
+        "Standing Dunk": 99, "Post Control": 99
+      },
+      "Shooting": {
+        "Mid-Range Shot": 83, "Three-Point Shot": 77, "Free Throw": 95
+      },
+      "Playmaking": {
+        "Pass Accuracy": 99, "Ball Handle": 80, "Speed With Ball": 71
+      },
+      "Defense": {
+        "Interior Defense": 99, "Perimeter Defense": 88,
+        "Steal": 90, "Block": 99
+      },
+      "Rebounding": {
+        "Offensive Rebound": 96, "Defensive Rebound": 97
+      },
+      "Physicals": {
+        "Speed": 81, "Agility": 78, "Strength": 91, "Vertical": 92
+      }
+    };
+
+    const sliderElements = [];
+    const dependencySourceMap = {};
+    let currentIndex = 0;
+    const container = document.getElementById("attribute-container");
+    const pointDisplay = document.getElementById("pointCounter");
+
+    function calculateUsedPoints() {
+      let total = 0;
+      sliderElements.forEach(({ input }) => {
+        total += parseInt(input.value) - 25;
+      });
+      pointDisplay.textContent = `Points Used: ${total} / ${TOTAL_POINTS_CAP}`;
+    }
+
+    function resetAttributes() {
+    sliderElements.forEach(({ input, fill, max, valueDisplay }) => {
+    input.value = 25;
+    fill.style.width = "0%";
+    valueDisplay.textContent = "25";
+    });
+
+    Object.keys(dependencySourceMap).forEach(key => delete dependencySourceMap[key]);
+
+    calculateUsedPoints();
+    }
+
+    function createAttributeSection(category, attributes) {
+      const section = document.createElement("div");
+      section.className = `category ${category}`;
+      section.innerHTML = `<h2>${category}</h2>`;
+
+      Object.entries(attributes).forEach(([label, max]) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "attribute";
+
+        const nameLabel = document.createElement("label");
+        nameLabel.textContent = label;
+
+        const sliderWrapper = document.createElement("div");
+        sliderWrapper.className = "slider-wrapper";
+
+        const background = document.createElement("div");
+        background.className = "slider-background";
+
+        const fill = document.createElement("div");
+        fill.className = "slider-fill";
+        background.appendChild(fill);
+
+        const input = document.createElement("input");
+        input.type = "range";
+        input.min = 25;
+        input.max = max;
+        input.value = 25;
+        sliderWrapper.appendChild(background);
+        sliderWrapper.appendChild(input);
+
+        const valueContainer = document.createElement("div");
+        valueContainer.className = "value-container";
+        const currentVal = document.createElement("span");
+        const maxVal = document.createElement("span");
+        currentVal.textContent = "25";
+        maxVal.textContent = max;
+        valueContainer.appendChild(currentVal);
+        valueContainer.appendChild(maxVal);
+
+        const index = sliderElements.length;
+
+        input.addEventListener("input", () => {
+          const val = parseInt(input.value);
+          fill.style.width = ((val - 25) / (max - 25)) * 100 + "%";
+          currentVal.textContent = val;
+          calculateUsedPoints();
+
+          handleDependency(label, val);
+          handleReverseDependency(label, val);
+        });
+
+        input.addEventListener("focus", () => highlight(index));
+        input.addEventListener("mousedown", () => highlight(index));
+
+        wrapper.appendChild(nameLabel);
+        wrapper.appendChild(valueContainer);
+        wrapper.appendChild(sliderWrapper);
+        section.appendChild(wrapper);
+
+        sliderElements.push({
+          input, fill, label, max, wrapper, valueDisplay: currentVal
+        });
+      });
+
+      container.appendChild(section);
+    }
+
+    function handleDependency(label, sourceValue, visited = new Set()) {
+      if (visited.has(label)) return;
+      visited.add(label);
+
+      const deps = dependencies[label];
+      if (!deps) return;
+
+      deps.forEach(dep => {
+        const target = sliderElements.find(s => s.label === dep.target);
+        if (!target) return;
+
+        const expected = sourceValue - (dep.minValue - 25);
+        const currentTarget = parseInt(target.input.value);
+
+        if (sourceValue >= dep.minValue && currentTarget < expected) {
+          target.input.value = expected;
+          target.fill.style.width = ((expected - 25) / (target.max - 25)) * 100 + "%";
+          target.valueDisplay.textContent = expected;
+          dependencySourceMap[dep.target] = label;
+
+          const plus = document.createElement("span");
+          plus.className = "plus-popup";
+          plus.textContent = "+";
+          target.wrapper.querySelector(".value-container").appendChild(plus);
+          setTimeout(() => plus.remove(), 1000);
+
+          calculateUsedPoints();
+          handleDependency(dep.target, expected, visited); // recursive chain
+        }
+      });
+    }
+
+    function handleReverseDependency(label, newValue) {
+      for (const [dependent, source] of Object.entries(dependencySourceMap)) {
+        if (label === dependent) {
+          const sourceSlider = sliderElements.find(s => s.label === source);
+          const sourceDep = dependencies[source]?.find(d => d.target === dependent);
+          if (!sourceSlider || !sourceDep) continue;
+
+          const minGap = sourceDep.minValue - 25;
+          const allowedMax = newValue + minGap;
+
+          if (parseInt(sourceSlider.input.value) > allowedMax) {
+            sourceSlider.input.value = allowedMax;
+            sourceSlider.input.dispatchEvent(new Event("input"));
+          }
+        }
+      }
+    }
+
+    function highlight(index) {
+      sliderElements.forEach(({ input }) => input.parentElement.classList.remove("highlight"));
+      const current = sliderElements[index];
+      current.input.parentElement.classList.add("highlight");
+      currentIndex = index;
+      current.wrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    Object.entries(data).forEach(([category, attributes]) => {
+      createAttributeSection(category, attributes);
+    });
+
+    highlight(currentIndex);
+    calculateUsedPoints();
+
+    window.addEventListener("keydown", e => {
+      const current = sliderElements[currentIndex];
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) e.preventDefault();
+      if (e.key === "ArrowUp" && currentIndex > 0) highlight(currentIndex - 1);
+      if (e.key === "ArrowDown" && currentIndex < sliderElements.length - 1) highlight(currentIndex + 1);
+      if (e.key === "ArrowRight" && parseInt(current.input.value) < current.max) {
+        current.input.value = parseInt(current.input.value) + 1;
+        current.input.dispatchEvent(new Event("input"));
+      }
+      if (e.key === "ArrowLeft" && parseInt(current.input.value) > 25) {
+        current.input.value = parseInt(current.input.value) - 1;
+        current.input.dispatchEvent(new Event("input"));
+      }
+    });
+  </script>
+</body>
+</html>
